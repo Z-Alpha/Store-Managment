@@ -38,24 +38,31 @@ export const login = createAsyncThunk(
       console.log('Attempting login with:', userData.email);
       console.log('Using axios instance:', axios.defaults.baseURL);
       
-      const response = await axios.post('/api/users/login', userData);
-      console.log('Raw login response:', response);
-      console.log('Login response data:', response.data);
+      const response = await axios.post('/users/login', userData);
+      console.log('🔑 Raw login response:', response);
+      console.log('🔑 Login response data:', response.data);
       
       if (!response.data) {
         throw new Error('No response data received');
       }
 
       if (!response.data.token) {
-        console.error('Response data missing token:', response.data);
+        console.error('❌ Response data missing token:', response.data);
         throw new Error('Invalid response format - no token received');
       }
 
+      console.log('✅ Token received:', {
+        length: response.data.token.length,
+        preview: response.data.token.substring(0, 10) + '...'
+      });
+
       // Store user data in localStorage
       localStorage.setItem('user', JSON.stringify(response.data));
+      console.log('💾 Stored user data in localStorage');
       
       // Set axios default headers
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+      console.log('🔒 Set Authorization header for future requests');
       
       return response.data;
     } catch (error: any) {

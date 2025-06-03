@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { Dialog } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { AppDispatch } from '../../app/store';
-import { Product, createProduct, updateProduct } from '../../features/products/productSlice';
+import { Product, createProduct, updateProduct, getProducts } from '../../features/products/productSlice';
 import ImageUpload from './ImageUpload';
 import Input from '../common/Input';
 import Button from '../common/Button';
@@ -27,7 +27,7 @@ const ProductModal = ({ isOpen, onClose, product }: ProductModalProps) => {
     quantity: '',
     image: '',
     barcode: '',
-    status: 'in_stock' as 'in_stock' | 'out_of_stock' | 'discontinued'
+    status: 'out_of_stock' as 'in_stock' | 'out_of_stock' | 'discontinued'
   });
 
   useEffect(() => {
@@ -40,10 +40,9 @@ const ProductModal = ({ isOpen, onClose, product }: ProductModalProps) => {
         quantity: product.quantity.toString(),
         image: product.image || '',
         barcode: product.barcode || '',
-        status: product.status || 'in_stock'
+        status: product.status
       });
     } else {
-      // Reset form with default values for new products
       setFormData({
         name: '',
         description: '',
@@ -52,7 +51,7 @@ const ProductModal = ({ isOpen, onClose, product }: ProductModalProps) => {
         quantity: '0',
         image: '',
         barcode: '',
-        status: 'in_stock'
+        status: 'out_of_stock'
       });
     }
   }, [product]);
@@ -60,11 +59,32 @@ const ProductModal = ({ isOpen, onClose, product }: ProductModalProps) => {
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
-    const { name, value, type } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
-    }));
+    const { name, value } = e.target;
+    console.log(`Changing ${name} to ${value}`);
+    
+    if (name === 'status') {
+      const newStatus = value as 'in_stock' | 'out_of_stock' | 'discontinued';
+      console.log('Setting new status:', newStatus);
+      
+      // If changing status to out_of_stock or discontinued, set quantity to 0
+      if (newStatus === 'out_of_stock' || newStatus === 'discontinued') {
+        setFormData(prev => ({
+          ...prev,
+          status: newStatus,
+          quantity: '0'
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          status: newStatus
+        }));
+      }
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -74,7 +94,6 @@ const ProductModal = ({ isOpen, onClose, product }: ProductModalProps) => {
     try {
       const productData = new FormData();
       
-      // Convert and validate data types
       const processedData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
@@ -82,10 +101,11 @@ const ProductModal = ({ isOpen, onClose, product }: ProductModalProps) => {
         category: formData.category.trim(),
         quantity: parseInt(formData.quantity),
         barcode: formData.barcode?.trim(),
-        status: formData.status || 'in_stock'
+        status: formData.status
       };
 
-      // Validate required fields and data types
+      console.log('Submitting product with data:', processedData);
+
       if (isNaN(processedData.price) || processedData.price < 0) {
         throw new Error('Invalid price value');
       }
@@ -94,14 +114,15 @@ const ProductModal = ({ isOpen, onClose, product }: ProductModalProps) => {
         throw new Error('Invalid quantity value');
       }
 
-      // Append all form data with proper types
+      // Ensure quantity is 0 for out_of_stock or discontinued status
+      if (processedData.status === 'out_of_stock' || processedData.status === 'discontinued') {
+        processedData.quantity = 0;
+      }
+
+      // Convert processedData to FormData
       Object.entries(processedData).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
-          if (typeof value === 'number') {
-            productData.append(key, value.toString());
-          } else {
-            productData.append(key, value);
-          }
+        if (value !== undefined && value !== null) {
+          productData.append(key, value.toString());
         }
       });
 
@@ -109,29 +130,24 @@ const ProductModal = ({ isOpen, onClose, product }: ProductModalProps) => {
         productData.append('image', selectedImage);
       }
 
+      let result;
       if (product) {
-        await dispatch(updateProduct({ id: product._id, productData })).unwrap();
+        console.log('Updating product with data:', Object.fromEntries(productData.entries()));
+        result = await dispatch(updateProduct({ id: product._id, productData })).unwrap();
+        console.log('Product updated:', result);
         toast.success('Product updated successfully');
+        
+        // Force a refresh of the products list
+        dispatch(getProducts());
       } else {
-        await dispatch(createProduct(productData)).unwrap();
+        result = await dispatch(createProduct(productData)).unwrap();
+        console.log('Product created:', result);
         toast.success('Product created successfully');
       }
 
-      // Reset form
-      setFormData({
-        name: '',
-        description: '',
-        price: '',
-        category: '',
-        quantity: '',
-        image: '',
-        barcode: '',
-        status: 'in_stock'
-      });
-      setSelectedImage(null);
-      
       onClose();
     } catch (error: any) {
+      console.error('Error submitting product:', error);
       toast.error(error.message || 'Something went wrong');
     } finally {
       setIsSubmitting(false);
@@ -154,7 +170,7 @@ const ProductModal = ({ isOpen, onClose, product }: ProductModalProps) => {
             </Dialog.Title>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-full p-1"
+              className="text-gray-400 hover:text-gray-500"
             >
               <XMarkIcon className="h-6 w-6" />
             </button>
@@ -216,9 +232,9 @@ const ProductModal = ({ isOpen, onClose, product }: ProductModalProps) => {
                 required
               />
 
-              <div>
+              <div className="sm:col-span-1">
                 <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
+                  Status *
                 </label>
                 <select
                   id="status"
@@ -228,8 +244,8 @@ const ProductModal = ({ isOpen, onClose, product }: ProductModalProps) => {
                   className="block w-full rounded-md border-0 py-2.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-500 sm:text-sm sm:leading-6"
                   required
                 >
-                  <option value="in_stock">In Stock</option>
                   <option value="out_of_stock">Out of Stock</option>
+                  <option value="in_stock">In Stock</option>
                   <option value="discontinued">Discontinued</option>
                 </select>
               </div>
@@ -250,11 +266,12 @@ const ProductModal = ({ isOpen, onClose, product }: ProductModalProps) => {
               </div>
             </div>
 
-            <div className="flex justify-end space-x-3 mt-6 pt-6 border-t">
+            <div className="flex justify-end space-x-3 mt-6">
               <Button
                 type="button"
                 variant="secondary"
                 onClick={onClose}
+                disabled={isSubmitting}
               >
                 Cancel
               </Button>

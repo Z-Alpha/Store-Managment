@@ -69,8 +69,9 @@ const createProduct = asyncHandler(async (req, res) => {
       throw new Error('Please provide all required fields');
     }
 
+    // Create product with explicit status
     const product = await Product.create({
-      user: req.user._id, // From auth middleware
+      user: req.user._id,
       name,
       description,
       price,
@@ -78,7 +79,7 @@ const createProduct = asyncHandler(async (req, res) => {
       quantity: quantity || 0,
       image,
       barcode,
-      status: status || 'in_stock' // Default to in_stock if not provided
+      status: status || 'out_of_stock' // Default to out_of_stock if not provided
     });
 
     console.log('Product created successfully:', product);
@@ -104,7 +105,7 @@ const updateProduct = asyncHandler(async (req, res) => {
       throw new Error('Product not found');
     }
 
-    // Update only the fields that are present in the request
+    // Ensure status is included in updates
     const updates = {
       name: req.body.name !== undefined ? req.body.name : product.name,
       description: req.body.description !== undefined ? req.body.description : product.description,
@@ -113,8 +114,10 @@ const updateProduct = asyncHandler(async (req, res) => {
       quantity: req.body.quantity !== undefined ? req.body.quantity : product.quantity,
       image: req.body.image !== undefined ? req.body.image : product.image,
       barcode: req.body.barcode !== undefined ? req.body.barcode : product.barcode,
-      status: req.body.status !== undefined ? req.body.status : product.status
+      status: req.body.status || product.status // Use existing status if not provided
     };
+
+    console.log('Applying updates:', updates);
 
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id,

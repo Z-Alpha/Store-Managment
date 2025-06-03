@@ -35,7 +35,7 @@ export const getProducts = createAsyncThunk(
   'products/getAll',
   async (_, thunkAPI) => {
     try {
-      const response = await axios.get('/api/products');
+      const response = await axios.get('/products');
       return response.data.products;
     } catch (error: any) {
       const message =
@@ -50,7 +50,9 @@ export const createProduct = createAsyncThunk(
   'products/create',
   async (productData: FormData, thunkAPI) => {
     try {
-      const response = await axios.post('/api/products', productData);
+      console.log('Creating product with data:', Object.fromEntries(productData.entries()));
+      const response = await axios.post('/products', productData);
+      console.log('Create response:', response.data);
       return response.data;
     } catch (error: any) {
       const message =
@@ -65,7 +67,11 @@ export const updateProduct = createAsyncThunk(
   'products/update',
   async ({ id, productData }: { id: string; productData: FormData }, thunkAPI) => {
     try {
-      const response = await axios.put(`/api/products/${id}`, productData);
+      const formDataObj = Object.fromEntries(productData.entries());
+      console.log('Updating product:', id, 'with data:', formDataObj);
+      
+      const response = await axios.put(`/products/${id}`, productData);
+      console.log('Update response:', response.data);
       return response.data;
     } catch (error: any) {
       const message =
@@ -80,7 +86,7 @@ export const deleteProduct = createAsyncThunk(
   'products/delete',
   async (id: string, thunkAPI) => {
     try {
-      await axios.delete(`/api/products/${id}`);
+      await axios.delete(`/products/${id}`);
       return id;
     } catch (error: any) {
       const message =
@@ -119,7 +125,7 @@ export const productSlice = createSlice({
       })
       .addCase(createProduct.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.products.push(action.payload);
+        state.products.unshift(action.payload);
       })
       .addCase(createProduct.rejected, (state, action) => {
         state.isLoading = false;

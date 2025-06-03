@@ -57,36 +57,34 @@ const registerUser = asyncHandler(async (req, res) => {
 // @access  Public
 const loginUser = asyncHandler(async (req, res) => {
   try {
-    console.log('Login attempt with:', req.body);
-    console.log('Environment check:', {
-      hasJwtSecret: !!process.env.JWT_SECRET,
-      jwtSecretLength: process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 0,
-      nodeEnv: process.env.NODE_ENV
+    console.log('👤 Login attempt:', {
+      email: req.body.email,
+      hasPassword: !!req.body.password
     });
 
     const { email, password } = req.body;
 
     // Check for user email
     const user = await User.findOne({ email });
-    console.log('Found user:', user ? { 
-      id: user._id, 
-      email: user.email, 
+    console.log('🔍 User lookup result:', user ? {
+      id: user._id,
+      email: user.email,
       role: user.role,
-      hasPassword: !!user.password 
-    } : null);
+      hasPassword: !!user.password
+    } : 'No user found');
 
     if (!user) {
-      console.error('No user found with email:', email);
+      console.error('❌ No user found with email:', email);
       res.status(400);
       throw new Error('Invalid credentials');
     }
 
     // Verify password
     const isMatch = await bcrypt.compare(password, user.password);
-    console.log('Password match result:', isMatch);
+    console.log('🔐 Password verification:', isMatch ? 'matched' : 'failed');
 
     if (!isMatch) {
-      console.error('Password does not match for user:', email);
+      console.error('❌ Password does not match for user:', email);
       res.status(400);
       throw new Error('Invalid credentials');
     }
@@ -95,17 +93,10 @@ const loginUser = asyncHandler(async (req, res) => {
     let token;
     try {
       token = generateToken(user._id);
-      console.log('Generated login token:', token ? 'Token generated successfully' : 'Token generation failed');
     } catch (error) {
-      console.error('Token generation error:', error);
+      console.error('❌ Token generation failed:', error);
       res.status(500);
       throw error;
-    }
-
-    if (!token) {
-      console.error('No token generated for user:', email);
-      res.status(500);
-      throw new Error('Failed to generate authentication token');
     }
 
     const response = {
@@ -116,14 +107,18 @@ const loginUser = asyncHandler(async (req, res) => {
       token,
     };
     
-    console.log('Sending login response:', {
-      ...response,
-      token: token ? 'Token included' : 'No token'
+    console.log('✅ Login successful:', {
+      userId: user._id,
+      role: user.role,
+      tokenLength: token.length
     });
     
     res.json(response);
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('❌ Login error:', {
+      message: error.message,
+      stack: error.stack
+    });
     if (!res.statusCode || res.statusCode === 200) {
       res.status(500);
     }
@@ -164,31 +159,42 @@ const updateUser = asyncHandler(async (req, res) => {
 
 // Generate JWT
 const generateToken = (id) => {
-  console.log('Attempting to generate token for ID:', id);
-  console.log('JWT_SECRET status:', {
-    isDefined: typeof process.env.JWT_SECRET !== 'undefined',
-    isEmpty: !process.env.JWT_SECRET,
-    length: process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 0
-  });
-
+  console.log('🔑 Attempting to generate token for ID:', id);
+  
+  // Validate JWT_SECRET
   if (!process.env.JWT_SECRET) {
-    console.error('JWT_SECRET is not defined in environment variables');
+    console.error('❌ JWT_SECRET is not defined in environment variables');
     throw new Error('JWT_SECRET is not configured');
   }
 
   if (!process.env.JWT_SECRET.trim()) {
-    console.error('JWT_SECRET is empty or contains only whitespace');
+    console.error('❌ JWT_SECRET is empty or contains only whitespace');
     throw new Error('JWT_SECRET is invalid');
   }
 
   try {
-    const token = jwt.sign({ id }, process.env.JWT_SECRET, {
-      expiresIn: '30d',
+    const token = jwt.sign(
+      { 
+        id,
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60) // 30 days
+      }, 
+      process.env.JWT_SECRET
+    );
+    
+    console.log('✅ JWT generated successfully:', {
+      userId: id,
+      tokenPreview: token.substring(0, 10) + '...',
+      length: token.length,
+      expiresIn: '30 days'
     });
-    console.log('JWT generated successfully for ID:', id);
+    
     return token;
   } catch (error) {
-    console.error('Error generating JWT:', error);
+    console.error('❌ Error generating JWT:', {
+      error: error.message,
+      stack: error.stack
+    });
     throw error;
   }
 };

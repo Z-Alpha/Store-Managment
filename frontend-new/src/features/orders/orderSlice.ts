@@ -45,7 +45,7 @@ export const getOrders = createAsyncThunk(
   'orders/getAll',
   async (_, thunkAPI) => {
     try {
-      const response = await axios.get('/api/orders');
+      const response = await axios.get('/orders');
       return response.data;
     } catch (error: any) {
       const message = error.response?.data?.message || error.message;
@@ -59,7 +59,7 @@ export const createOrder = createAsyncThunk(
   'orders/create',
   async (orderData: Partial<Order>, thunkAPI) => {
     try {
-      const response = await axios.post('/api/orders', orderData);
+      const response = await axios.post('/orders', orderData);
       return response.data;
     } catch (error: any) {
       const message = error.response?.data?.message || error.message;
@@ -73,7 +73,7 @@ export const updateOrder = createAsyncThunk(
   'orders/update',
   async ({ id, orderData }: { id: string; orderData: Partial<Order> }, thunkAPI) => {
     try {
-      const response = await axios.put(`/api/orders/${id}`, orderData);
+      const response = await axios.put(`/orders/${id}`, orderData);
       return response.data;
     } catch (error: any) {
       const message = error.response?.data?.message || error.message;
@@ -87,7 +87,7 @@ export const deleteOrder = createAsyncThunk(
   'orders/delete',
   async (id: string, thunkAPI) => {
     try {
-      await axios.delete(`/api/orders/${id}`);
+      await axios.delete(`/orders/${id}`);
       return id;
     } catch (error: any) {
       const message = error.response?.data?.message || error.message;

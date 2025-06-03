@@ -21,6 +21,12 @@ const productSchema = mongoose.Schema({
         required: [true, 'Please add quantity'],
         min: [0, 'Quantity cannot be negative'],
         default: 0
+    },
+    status: {
+        type: String,
+        enum: ['in_stock', 'out_of_stock', 'discontinued'],
+        required: [true, 'Please add a status'],
+        default: 'in_stock'
     }
 }, {
     timestamps: true

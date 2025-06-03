@@ -45,12 +45,12 @@ export const getCustomers = createAsyncThunk(
     try {
       // Log the request details
       console.log('Making API request to get customers:', { 
-        url: `/api/customers?page=${page}&keyword=${keyword}`,
+        url: `/customers?page=${page}&keyword=${keyword}`,
         headers: axios.defaults.headers,
         baseURL: axios.defaults.baseURL
       });
 
-      const response = await axios.get(`/api/customers?page=${page}&keyword=${keyword}`);
+      const response = await axios.get(`/customers?page=${page}&keyword=${keyword}`);
       
       // Log the full response
       console.log('Full API response:', {
@@ -94,7 +94,7 @@ export const getCustomer = createAsyncThunk(
   'customers/getOne',
   async (id: string, thunkAPI) => {
     try {
-      const response = await axios.get(`/api/customers/${id}`);
+      const response = await axios.get(`/customers/${id}`);
       return response.data;
     } catch (error: any) {
       const message = error.response?.data?.message || error.message;
@@ -108,7 +108,7 @@ export const createCustomer = createAsyncThunk(
   'customers/create',
   async (customerData: Omit<Customer, '_id' | 'createdAt' | 'updatedAt' | 'totalOrders' | 'totalSpent'>, thunkAPI) => {
     try {
-      const response = await axios.post('/api/customers', customerData);
+      const response = await axios.post('/customers', customerData);
       return response.data;
     } catch (error: any) {
       const message = error.response?.data?.message || error.message;
@@ -122,7 +122,7 @@ export const updateCustomer = createAsyncThunk(
   'customers/update',
   async ({ id, customerData }: { id: string; customerData: Partial<Customer> }, thunkAPI) => {
     try {
-      const response = await axios.put(`/api/customers/${id}`, customerData);
+      const response = await axios.put(`/customers/${id}`, customerData);
       return response.data;
     } catch (error: any) {
       const message = error.response?.data?.message || error.message;
@@ -136,7 +136,7 @@ export const deleteCustomer = createAsyncThunk(
   'customers/delete',
   async (id: string, thunkAPI) => {
     try {
-      await axios.delete(`/api/customers/${id}`);
+      await axios.delete(`/customers/${id}`);
       return id;
     } catch (error: any) {
       const message = error.response?.data?.message || error.message;

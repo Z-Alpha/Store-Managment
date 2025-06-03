@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import { AppDispatch, RootState } from '../app/store';
-import { getProducts, deleteProduct, Product } from '../features/products/productSlice';
+import { getProducts, deleteProduct, Product, updateProduct } from '../features/products/productSlice';
 import ProductModal from '../components/products/ProductModal';
 import ProductFilters from '../components/products/ProductFilters';
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
@@ -80,6 +80,34 @@ const Products = () => {
     }
   };
 
+  const handleStatusChange = async (product: Product) => {
+    const statusOrder: Product['status'][] = ['out_of_stock', 'in_stock', 'discontinued'];
+    const currentIndex = statusOrder.indexOf(product.status || 'out_of_stock');
+    const nextStatus = statusOrder[(currentIndex + 1) % statusOrder.length];
+
+    try {
+      const updateData = new FormData();
+      Object.entries(product).forEach(([key, value]) => {
+        if (key !== '_id' && key !== 'createdAt' && key !== 'updatedAt') {
+          updateData.append(key, value.toString());
+        }
+      });
+      
+      // If changing to out_of_stock or discontinued, set quantity to 0
+      if (nextStatus === 'out_of_stock' || nextStatus === 'discontinued') {
+        updateData.set('quantity', '0');
+      }
+      
+      updateData.set('status', nextStatus);
+
+      await dispatch(updateProduct({ id: product._id, productData: updateData })).unwrap();
+      toast.success(`Product status updated to ${nextStatus.replace('_', ' ').toUpperCase()}`);
+      dispatch(getProducts());
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update product status');
+    }
+  };
+
   const handleFilterChange = (newFilters: FilterOptions) => {
     setFilters(newFilters);
   };
@@ -98,12 +126,10 @@ const Products = () => {
       (!filters.minPrice || product.price >= parseFloat(filters.minPrice)) &&
       (!filters.maxPrice || product.price <= parseFloat(filters.maxPrice));
 
-    const matchesStock = !filters.inStock || product.quantity > 0;
+    const matchesStock = !filters.inStock || product.status === 'in_stock';
 
     const matchesStatus =
       filters.status === 'all' ||
-      (filters.status === 'in_stock' && product.quantity > 0) ||
-      (filters.status === 'out_of_stock' && product.quantity === 0) ||
       product.status === filters.status;
 
     return matchesSearch && matchesCategory && matchesPrice && matchesStock && matchesStatus;
@@ -229,32 +255,45 @@ const Products = () => {
                   {product.quantity}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    product.status === 'in_stock' && product.quantity > 0
+                  <span className={`px-3 py-1 inline-flex items-center text-xs leading-5 font-semibold rounded-full ${
+                    product.status === 'in_stock'
                       ? 'bg-green-100 text-green-800'
-                      : product.status === 'out_of_stock' || product.quantity === 0
+                      : product.status === 'out_of_stock'
                       ? 'bg-red-100 text-red-800'
-                      : product.status === 'discontinued'
-                      ? 'bg-gray-100 text-gray-800'
-                      : 'bg-yellow-100 text-yellow-800'
+                      : 'bg-gray-100 text-gray-800'
                   }`}>
-                    {product.quantity > 0 
-                      ? 'IN STOCK'
-                      : product.status === 'discontinued'
-                      ? 'DISCONTINUED'
-                      : 'OUT OF STOCK'}
+                    <span className={`w-2 h-2 rounded-full mr-2 ${
+                      product.status === 'in_stock'
+                        ? 'bg-green-600'
+                        : product.status === 'out_of_stock'
+                        ? 'bg-red-600'
+                        : 'bg-gray-600'
+                    }`}></span>
+                    {product.status === 'in_stock'
+                      ? 'In Stock'
+                      : product.status === 'out_of_stock'
+                      ? 'Out of Stock'
+                      : 'Discontinued'}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button
-                    onClick={() => {
-                      setSelectedProduct(product);
-                      setIsModalOpen(true);
-                    }}
-                    className="text-blue-600 hover:text-blue-900 mr-4"
-                  >
-                    Edit
-                  </button>
+                  <div className="flex justify-end space-x-3">
+                    <button
+                      onClick={() => {
+                        setSelectedProduct(product);
+                        setIsModalOpen(true);
+                      }}
+                      className="text-blue-600 hover:text-blue-900"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteProduct(product._id)}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      <TrashIcon className="h-5 w-5" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -264,7 +303,7 @@ const Products = () => {
 
       <ProductModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleModalClose}
         product={selectedProduct}
       />
     </div>
